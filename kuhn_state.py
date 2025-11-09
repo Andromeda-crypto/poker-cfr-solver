@@ -15,36 +15,58 @@ class kuhnPokerState:
         
         return ['check', 'bet']
     
-    def is_terminal(self):
+    def is_terminal(self):    
         return self.history in ['CC', 'BC', 'BF','CBF']
 
     def calc_payoff(self):
-        rank = {'J': 1, 'Q': 2, 'K': 3}
-        card0, card1 = self.cards
+        if not self.is_terminal():
+            return 0 
+        if self.history.endswith("F"):
+            if self.history[-2] == "B": 
+                return self.pot / 2   
+            elif self.history[-2] == "B" or self.history[-2] == "C": 
+                return -self.pot / 2     
 
-        if self.history in ['BF', 'CBF']:
-            return self.pot / 2 if self.current_player == 0 else -self.pot / 2
-        if rank[card0] > rank[card1]:
-            return self.pot / 2
-        elif rank[card0] < rank[card1]:
-            return -self.pot / 2
+        p0_card = self.cards[0]
+        p1_card = self.cards[1]
+        card_rank = {'J': 1, 'Q': 2, 'K': 3}
+        if card_rank[p0_card] > card_rank[p1_card]:
+            return self.pot / 2  # Player 0 wins
+        elif card_rank[p0_card] < card_rank[p1_card]:
+            return -self.pot / 2  # Player 1 wins
         else:
-            return 0
+            return 0  
 
 
         
-    def next_state(self,action):
-        if action in ["bet", "call"]:
-            next_pot = self.pot + 1
+    def next_state(self, action):
+        new_history = self.history + action[0].upper()
+        new_pot = self.pot
+        new_cards = self.cards.copy()
+
+        if action == "bet":
+            new_pot += 1
+            next_player = 1 - self.current_player
+        elif action == "call":
+            new_pot += 1
+            next_player = 1 - self.current_player
+        elif action == "fold":
+            next_player = 1 - self.current_player
+        elif action == "check":
+            next_player = 1 - self.current_player
         else:
-            next_pot = self.pot
-        next_history = self.history + action[0].upper()
-        return kuhnPokerState(
-            history= next_history,
-            cards = self.cards,
-            current_player = 1 - self.current_player,
-            pot = next_pot
+            raise ValueError(f"Invalid action: {action}")
+
+        next_state = kuhnPokerState(
+            history=new_history,
+            cards=new_cards,
+            current_player=next_player,
+            pot=new_pot
         )
+
+        return next_state
+
+
     
 
 game = kuhnPokerState()

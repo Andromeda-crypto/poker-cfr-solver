@@ -1,30 +1,35 @@
-# Rules, game state and action flow together in this file
-
 import random
 from kuhn_state import kuhnPokerState
 
 class kuhnPokerGame:
     def __init__(self):
         self.state = kuhnPokerState()
-    
-    def play_round(self):
-        while not self.state.is_terminal():
-            current_player = self.state.current_player
-            legal_actions = self.state.legal_actions()
+
+    def play_turn(self, action=None):
+        """Apply one action (from human or bot)."""
+        if self.state.is_terminal():
+            return
+        current_player = self.state.current_player
+        legal_actions = self.state.legal_actions()
+
+        if action is None:
             action = random.choice(legal_actions)
-            print(f"Player {current_player} {action}s")
-            self.state = self.state.next_state(action)
+            print(f"Bot (Player {current_player}) {action}s")
+        else:
+            if action not in legal_actions:
+                raise ValueError(f"Invalid action '{action}'. Valid: {legal_actions}")
+
+        self.state = self.state.next_state(action)
+        return self.state
+
+    def game_over(self):
+        return self.state.is_terminal()
+
+    def result(self):
         payoff = self.state.calc_payoff()
         if payoff > 0:
-            print(f"Player 0 wins the pot of {self.state.pot}")
+            return "Player 0 wins!"
         elif payoff < 0:
-            print(f"player 1 wins the pot of {self.state.pot}")
+            return "Player 1 wins!"
         else:
-            print("Tie")
-        print(f"Final History: {self.state.history}, Cards: {self.state.cards}, Pot: {self.state.pot}")
-
-
-
-
-game = kuhnPokerGame()
-game.play_round()
+            return "It's a tie!"
