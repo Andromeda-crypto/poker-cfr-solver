@@ -15,27 +15,33 @@ class kuhnPokerState:
         
         return ['check', 'bet']
     
-    def is_terminal(self):    
-        return self.history in ['CC', 'BC', 'BF','CBF']
+    def is_terminal(self):
+        if self.history.endswith("F"):
+            return True
+        if self.history.endswith("CC"):
+           return True
+        if self.history.endswith("BC") or self.history.endswith("CB"):
+            return True
+    
+        return False
+
 
     def calc_payoff(self):
         if not self.is_terminal():
-            return 0 
-        if self.history.endswith("F"):
-            if self.history[-2] == "B": 
-                return self.pot / 2   
-            elif self.history[-2] == "B" or self.history[-2] == "C": 
-                return -self.pot / 2     
+            return 0
 
-        p0_card = self.cards[0]
-        p1_card = self.cards[1]
+        if self.history.endswith("F"):
+        # The player who folded loses
+            return -1 if self.history[-2] == "B" else 1
+
+        p0_card, p1_card = self.cards
         card_rank = {'J': 1, 'Q': 2, 'K': 3}
         if card_rank[p0_card] > card_rank[p1_card]:
-            return self.pot / 2  # Player 0 wins
+            return 1
         elif card_rank[p0_card] < card_rank[p1_card]:
-            return -self.pot / 2  # Player 1 wins
+            return -1
         else:
-            return 0  
+            return 0 
 
 
         

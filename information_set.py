@@ -22,7 +22,7 @@ class InformationSet:
         
         return self.strategy
     
-    def get_average_stategy(self):
+    def get_average_strategy(self):
         normalizing_sum = sum(self.strategy_sum)
         if normalizing_sum > 0:
             return self.strategy_sum / normalizing_sum

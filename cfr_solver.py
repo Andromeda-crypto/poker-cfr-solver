@@ -1,115 +1,101 @@
+import matplotlib.pyplot as plt
 import numpy as np
-from information_set import get_information_set
-from kuhn_poker import kuhnPokerGame
+from information_set import get_information_set, infoset_map
+from kuhn_state import kuhnPokerState
+
 
 class CFRSolver:
-    """
-    Counterfactual Regret Minimization solver for Kuhn Poker.
-    """
-    
     def __init__(self):
-        self.game = kuhnPokerGame()
         self.iterations = 0
-        
+        self.values = []
+        self.strategy_history = {'J': [], 'Q': [], 'K': []}
+
     def train(self, num_iterations):
-        util = 0
+        util = 0.0
+
         for i in range(num_iterations):
-            cards = self.game.deal_cards()
-            util += self.cfr(cards, "", 1.0, 1.0)
-            
+            state = kuhnPokerState()
+            util += self.cfr(state, 1.0, 1.0)
             self.iterations += 1
+
+            if (i + 1) % 100 == 0:
+                avg_value = util / (i + 1)
+                self.values.append(avg_value)
+
+
+                for card in ['J', 'Q', 'K']:
+                    infoset_key = f"{card}"
+                    if infoset_key in infoset_map:
+                        avg_strategy = infoset_map[infoset_key].get_average_strategy()
+                        self.strategy_history[card].append(avg_strategy[1])  
+                    else:
+                        self.strategy_history[card].append(0.0)
+
             if (i + 1) % 1000 == 0:
                 print(f"Iteration {i + 1}/{num_iterations}")
-        
-        print(f"\nAverage game value: {util / num_iterations}")
-        
-    def cfr(self, cards, history, reach_prob_0, reach_prob_1):
-        plays = len(history)
-        player = plays % 2
-        opponent = 1 - player
-        if self.is_terminal(history):
-            return self.get_payoff(cards, history, player)
-        
-        card = cards[player]
-        infoset = get_information_set(card, history)
-        
-        if player == 0:
-            strategy = infoset.get_strategy(reach_prob_0)
-        else:
-            strategy = infoset.get_strategy(reach_prob_1)
-        
-        actions = ["p", "b"]
-        action_utils = np.zeros(len(actions))
-        
-        for i, action in enumerate(actions):
-            next_history = history + action
-            
-            if player == 0:
-                action_utils[i] = -self.cfr(
-                    cards, 
-                    next_history, 
-                    reach_prob_0 * strategy[i],
-                    reach_prob_1
-                )
-            else:
-                action_utils[i] = -self.cfr(
-                    cards,
-                    next_history,
-                    reach_prob_0,
-                    reach_prob_1 * strategy[i]
-                )
+        avg_game_value = util/num_iterations
+        print(f"\nAverage game value: {avg_game_value:.4f}")
+        return avg_game_value
 
-        util = sum(strategy * action_utils)
+    def cfr(self, state, reach_prob_0, reach_prob_1):
+        if state.is_terminal():
+            return state.calc_payoff()
+
+        player = state.current_player
+        card = state.cards[player]
+        infoset = get_information_set(card, state.history)
+
+        strategy = infoset.get_strategy(reach_prob_0 if player == 0 else reach_prob_1)
+        actions = state.legal_actions()
+        action_utils = np.zeros(len(actions))
+
+        for i, action in enumerate(actions):
+            next_state = state.next_state(action)
+            if player == 0:
+                action_utils[i] = -self.cfr(next_state, reach_prob_0 * strategy[i], reach_prob_1)
+            else:
+                action_utils[i] = -self.cfr(next_state, reach_prob_0, reach_prob_1 * strategy[i])
+
+        util = np.dot(strategy, action_utils)
         regrets = action_utils - util
-    
+
         if player == 0:
             infoset.regret_sum += reach_prob_1 * regrets
         else:
             infoset.regret_sum += reach_prob_0 * regrets
-        
+
         return util
-    
-    def is_terminal(self, history):
-       
-        return history in ["pp", "pbc", "pbf", "bp", "bc", "bbp", "bbc"]
-    
-    def get_payoff(self, cards, history, player):
-       
 
-        if "f" in history:
-            return 1 
-        else:
-            if cards[0] > cards[1]:
-                winner = 0
-            else:
-                winner = 1
-        
-            if history in ["pp"]:
-                pot = 1  
-            else:  
-                pot = 2 
-            if len(history) % 2 == player:
-                if winner == player:
-                    return pot
-                else:
-                    return -pot
-            else:
-                if winner == player:
-                    return -pot
-                else:
-                    return pot
+    def plot_results(self):
+        # Convergence curve
+        plt.figure(figsize=(10, 5))
+        plt.plot(range(100, len(self.values) * 100 + 1, 100), self.values)
+        plt.title("CFR Convergence (Average Game Value)")
+        plt.xlabel("Iterations")
+        plt.ylabel("Expected Value")
+        plt.grid(True)
+        plt.show()
 
 
-# Run training
+        plt.figure(figsize=(10, 5))
+        for card, probs in self.strategy_history.items():
+            plt.plot(range(100, len(probs) * 100 + 1, 100), probs, label=f"{card} - Bet Prob")
+        plt.title("Strategy Evolution per Card")
+        plt.xlabel("Iterations")
+        plt.ylabel("Probability of Betting")
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+
+
 if __name__ == "__main__":
     solver = CFRSolver()
     solver.train(10000)
-    
 
     print("\n=== Average Strategies ===")
-    from information_set import infoset_map
     for key, infoset in sorted(infoset_map.items()):
         avg_strategy = infoset.get_average_strategy()
-        print(f"{key}: Pass={avg_strategy[0]:.3f}, Bet={avg_strategy[1]:.3f}")
+        print(f"{key}: Check/Call={avg_strategy[0]:.3f}, Bet/Fold={avg_strategy[1]:.3f}")
 
-
+    # Manual visualization trigger
+    solver.plot_results()
