@@ -5,6 +5,11 @@ class kuhnPokerGame:
     def __init__(self):
         self.state = kuhnPokerState()
 
+    def deal_cards(self):
+        deck = ["J", "Q", "K"]
+        random.shuffle(deck)
+        return deck[:2]
+
     def play_turn(self, action=None):
         """Apply one action (from human or bot)."""
         if self.state.is_terminal():
