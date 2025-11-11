@@ -1,6 +1,6 @@
 # poker-cfr-solver
 
-Project Overview
+# Project Overview
 
 This project demonstrates the application of Counterfactual Regret Minimization (CFR) to solve Kuhn Poker, a simplified zero-sum poker game. The CFR solver trains a bot to play optimally, and the project includes an interactive web demo where a human player can play against the trained bot.
 
@@ -22,9 +22,7 @@ Real-time human vs bot gameplay with a live demo.
 | ![Streamlit](https://img.shields.io/badge/Streamlit-FF4B4B?style=for-the-badge\&logo=streamlit\&logoColor=white)    | Web-based frontend for interactive human vs bot gameplay                    |
 | Git                                                                                                                 | Version control and project tracking                                        |
 
-| Jupyter / VS Code                                                                                                   | Development and experimentation environment |
-
-Features
+# Features
 
 CFR Solver with strategy and regret tracking
 
@@ -34,17 +32,8 @@ Visualizations: strategy evolution and cumulative regrets per card
 
 Live Demo showcasing decision-making of the bot
 
-File Structure
-kuhn-poker-cfr/
-│
-├─ cfr_solver.py        # CFR solver and training logic
-├─ kuhn_state.py        # Game state class and rules
-├─ information_set.py   # Info set class for CFR
-├─ streamlit_app.py     # Streamlit interactive demo
-├─ requirements.txt     # Python dependencies
-└─ README.md            # Project documentation
 
-Future Enhancements
+# Future Enhancements
 Extend to full-scale poker variants (Texas Hold’em, Omaha)
 
 Integrate real-time interactive visualizations in the web app
