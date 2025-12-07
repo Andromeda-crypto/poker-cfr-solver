@@ -4,89 +4,88 @@ import streamlit as st
 import numpy as np
 from cfr_solver import CFRSolver
 from kuhn_state import kuhnPokerState
+from leduc_state import leducPokerState
 from information_set import get_information_set, infoset_map
 
-st.set_page_config(page_title="Kuhn Poker CFR", layout="wide")
-st.title("Kuhn Poker: Human vs Trained Bot")
+st.set_page_config(page_title="Poker CFR", layout="wide")
+st.title("CFR Poker: Human vs Trained Bot (Kuhn & Leduc)")
 
+# Choose game variant
+game_type = st.sidebar.selectbox("Game Variant", ["Kuhn", "Leduc"])
 
-solver = CFRSolver()
-avg_game_value = solver.train(10000)  
+# CFR Training (separate for each variant)
+solver = CFRSolver(game_type=game_type)
+avg_game_value = solver.train(20000)
+st.sidebar.write(f"Average {game_type} Game Value: {avg_game_value:.4f}")
 
-st.sidebar.write(f"Average Game Value: {avg_game_value:.4f}")
-
-if 'state' not in st.session_state:
-    st.session_state.state = kuhnPokerState()
+# Initialize state
+if 'state' not in st.session_state or st.session_state.get('active_game') != game_type:
+    st.session_state.active_game = game_type
+    st.session_state.state = kuhnPokerState() if game_type == "Kuhn" else leducPokerState()
     st.session_state.history_log = []
+
+state = st.session_state.state
 
 def bot_action(state):
     player = state.current_player
-    card = state.cards[player]
-    infoset = get_information_set(card, state.history)
+    card_info = state.get_information()  # Works for both variants
+    infoset = get_information_set(card_info, state.history)
     strategy = infoset.get_average_strategy()
     legal_actions = state.legal_actions()
 
+    prob = np.array(strategy[:len(legal_actions)])
+    prob = prob / prob.sum()
 
-    if 'check' in legal_actions and 'bet' in legal_actions:
-        prob = strategy  # [check, bet]
-    else:
-        prob = [strategy[0], strategy[1]]  # [call, fold]
+    return np.random.choice(legal_actions, p=prob)
 
-    action = np.random.choice(legal_actions, p=prob/np.sum(prob))
-    return action
 
 def render_game():
     state = st.session_state.state
+
     st.subheader(f"History: {state.history}")
     st.write(f"Pot: {state.pot}")
-    st.write(f"Your card: {state.cards[0]}")  # Player 0 is human
+
+    # Cards
+    if game_type == "Kuhn":
+        st.write(f"Your card: {state.cards[0]}")
+    else:
+        st.write(f"Your private card: {state.private_cards[0]}")
+        if state.public_card is not None:
+            st.write(f"Public card: {state.public_card}")
 
     if state.is_terminal():
         payoff = state.calc_payoff()
-        if payoff > 0:
-            st.success("You win!")
-        else:
-            st.error("Bot wins!")
+        st.success("You win!" if payoff > 0 else "Bot wins!")
+
         if st.button("Restart Game"):
-            st.session_state.state = kuhnPokerState()
+            st.session_state.state = kuhnPokerState() if game_type == "Kuhn" else leducPokerState()
             st.session_state.history_log = []
         return
 
-    # Human action
     legal_actions = state.legal_actions()
     human_action = st.radio("Choose your action:", legal_actions)
+
     if st.button("Play Turn"):
-        # Human plays
-        state = state.next_state(human_action)
+        new_state = state.next_state(human_action)
         st.session_state.history_log.append(f"You: {human_action}")
 
-        # Bot plays
-        if not state.is_terminal():
-            bot_a = bot_action(state)
-            state = state.next_state(bot_a)
+        if not new_state.is_terminal():
+            bot_a = bot_action(new_state)
+            new_state = new_state.next_state(bot_a)
             st.session_state.history_log.append(f"Bot: {bot_a}")
 
-        st.session_state.state = state
+        st.session_state.state = new_state
         render_game()
 
 render_game()
 
-
+# Strategy Visualization
 st.subheader("Strategy Probabilities (Average CFR)")
-cards = ['J','Q','K']
-for card in cards:
-    probs = []
-    for key, infoset in infoset_map.items():
-        if key.startswith(card):
-            avg = infoset.get_average_strategy()
-            probs.append(avg[1])  
-    st.line_chart(np.array(probs))
+for key, infoset in infoset_map.items():
+    st.write(f"Infoset {key}: {infoset.get_average_strategy()}")
 
 
+# Regret Visualization
 st.subheader("Regret Evolution")
-for card in cards:
-    regrets = []
-    for key, infoset in infoset_map.items():
-        if key.startswith(card):
-            regrets.append(np.sum(infoset.regret_sum))
-    st.bar_chart(np.array(regrets))
+for key, infoset in infoset_map.items():
+    st.write(f"Infoset {key}: Regret Sum = {infoset.regret_sum}")

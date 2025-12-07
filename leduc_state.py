@@ -1,0 +1,98 @@
+# leduc_state
+
+import random
+class leducPokerState:
+    def __init__(self, history="", cards=['J','Q','K'], current_player=0,pot=0):
+        self.history = history 
+        self.cards = cards or self.deal_initial_cards()
+        self.current_player = current_player
+        self.pot = pot
+
+    def deal_initial_cards(self):
+        deck = ['J', 'J', 'K','K', 'Q', 'Q']
+        random.shuffle(deck)
+
+        return (deck.pop(), deck.pop())
+    
+    def get_inofrmation(self,card,history):
+        return f"{card}{history}"
+    
+    def legal_actions(self):
+        if self.history.endswith('B'):
+            return ['call', 'fold']
+        
+        return ['check', 'bet']
+    
+    def is_terminal(self):
+        if self.history.endswith("F"):
+            return True
+        if self.history.endswith("CC"):
+            return True
+        if self.history.endswith("BC") or self.history.endswith("CB"):
+            return True
+        return False
+    
+    def calc_payoff(self):
+        if not self.is_termial():
+            return 0
+        
+        if self.history.endswith("F"):
+            return -1 if self.history[-2] == "B" else 1
+        
+        p0_card, p1_card = self.cards
+        card_rank = {'J':1, 'Q':2, 'K':3}
+
+        if card_rank[p0_card] > card_rank[p1_card]:
+            return 1
+        elif card_rank[p0_card] < card_rank[p1_card]:
+            return -1
+        else:
+            return 0
+        
+    def next_state(self,action):
+        new_history = self.history + action[0].upper()
+        new_pot = self.pot
+        new_cards = self.cards.copy()
+
+        if action == "bet":
+            new_pot += 1
+            next_player = 1 - self.current_player
+        elif action == "call":
+            new_pot += 1
+            next_player = 1 - self.current_player
+        elif action == "fold":
+            next_player = 1 - self.current_player
+        elif action == "check":
+            next_player = 1 - self.current_player        
+        else:
+            raise ValueError(f"Invalid action: {action}")
+        
+        next_state = leducPokerState(
+            history=new_history,
+            cards = new_cards,
+            current_player=next_player,
+            pot=new_pot
+        )
+
+        return next_state
+    
+
+# Running the game
+
+game = leducPokerState()
+print(f"initial State :\nHistory :{game.history}\nCards : {game.cards}\nCurrent Player :{game.current_player}\n Pot: {game.pot}")
+next_game = game.next_state('bet')
+print("\nAfter Player 0 makes a bet")
+print(f"Next State :\nHistory :{next_game.history}\nCards : {next_game.cards}\n Current Player : {next_game.current_player}\n Pot: {next_game.pot}")
+
+
+terminal_state = leducPokerState(history="BC", cards=['J','K'], current_player=0, pot =4)
+print(f"\nTerminal State:\nHistory :{terminal_state.history}\nCards : {terminal_state.cards}\n Current Player :{terminal_state.current_player}\n Pot: {terminal_state.pot}")
+
+
+for h in ["", "B", "BC", "BF", "C", "CB", "CBF", "CC"]:
+    s = leducPokerState(history=h)
+    print(f"{h:3} → {s.legal_actions()} | Terminal: {s.is_terminal()}")
+
+
+

@@ -1,16 +1,18 @@
+# leduc poker 
+
 import random
-from kuhn_state import kuhnPokerState
+from leduc_state import leducPokerState
 
-class kuhnPokerGame:
+class leducPokerGame:
     def __init__(self):
-        self.state = kuhnPokerState()
-
+        self.state= leducPokerState()
+    
     def deal_cards(self):
-        deck = ["J", "Q", "K"]
+        deck = ['J', 'J', 'K','K', 'Q', 'Q']
         random.shuffle(deck)
-        return deck[:2]
-
-    def play_turn(self, action=None):
+        return (deck.pop(),deck.pop())
+    
+    def play_turn(self,action=None):
         """Apply one action (from human or bot)."""
         if self.state.is_terminal():
             return
@@ -26,10 +28,10 @@ class kuhnPokerGame:
 
         self.state = self.state.next_state(action)
         return self.state
-
+    
     def game_over(self):
         return self.state.is_terminal()
-
+    
     def result(self):
         payoff = self.state.calc_payoff()
         if payoff > 0:
@@ -37,5 +39,7 @@ class kuhnPokerGame:
         elif payoff < 0:
             return "Player 1 wins!"
         else:
-            return "It's a tie!"
-   
+            return "It's a tie!" # highly unlikely
+        
+        
+    
