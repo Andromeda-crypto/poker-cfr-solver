@@ -1,98 +1,115 @@
-# leduc_state
-
 import random
+
 class leducPokerState:
-    def __init__(self, history="", cards=['J','Q','K'], current_player=0,pot=0):
-        self.history = history 
-        self.cards = cards or self.deal_initial_cards()
+    def __init__(self, history="", private_cards=None, public_card=None,
+                 current_player=0, pot=2):
+        """
+        Leduc Poker:
+          - 6-card deck: JJ QQ KK
+          - Each player gets 1 private card
+          - After betting round 1: reveal 1 public card
+          - Then second betting round
+        """
+
+        self.history = history
         self.current_player = current_player
         self.pot = pot
 
-    def deal_initial_cards(self):
-        deck = ['J', 'J', 'K','K', 'Q', 'Q']
-        random.shuffle(deck)
+        # Deal private cards if not given
+        if private_cards is None:
+            deck = ['J','J','Q','Q','K','K']
+            random.shuffle(deck)
+            self.private_cards = (deck.pop(), deck.pop())
+            self.remaining_deck = deck
+        else:
+            self.private_cards = private_cards
+            # You must supply the deck if you use custom cards
+            self.remaining_deck = ['J','J','Q','Q','K','K']
 
-        return (deck.pop(), deck.pop())
-    
-    def get_inofrmation(self,card,history):
-        return f"{card}{history}"
-    
+        # Public card
+        self.public_card = public_card
+
+ 
+    def get_information(self):
+        """Information set: private card + public card + betting history"""
+        priv = self.private_cards[self.current_player]
+        pub = self.public_card if self.public_card is not None else "_"
+        return f"{priv}|{pub}|{self.history}"
+
+
     def legal_actions(self):
-        if self.history.endswith('B'):
-            return ['call', 'fold']
-        
-        return ['check', 'bet']
-    
+        h = self.history
+
+        # After a bet: only call or fold
+        if h.endswith("B"):
+            return ["call", "fold"]
+        return ["check", "bet"]
+
     def is_terminal(self):
-        if self.history.endswith("F"):
+        h = self.history
+        if h.endswith("F"):
             return True
-        if self.history.endswith("CC"):
+        if h.endswith("CC") or h.endswith("BC") or h.endswith("CB"):
+            if h.count("C") == 2 and self.public_card is None:
+                return False  # go to round 2
             return True
-        if self.history.endswith("BC") or self.history.endswith("CB"):
-            return True
+
         return False
-    
     def calc_payoff(self):
-        if not self.is_termial():
-            return 0
-        
         if self.history.endswith("F"):
-            return -1 if self.history[-2] == "B" else 1
-        
-        p0_card, p1_card = self.cards
-        card_rank = {'J':1, 'Q':2, 'K':3}
+            # The folder loses 1 pot unit
+            last = self.history[-2]
+            if last == "B":      # Player who bet wins
+                return 1 if self.current_player == 1 else -1
+            else:
+                return 1 if self.current_player == 0 else -1
 
-        if card_rank[p0_card] > card_rank[p1_card]:
+        # Showdown
+        p0 = self.private_cards[0]
+        p1 = self.private_cards[1]
+        ranks = {'J': 1, 'Q': 2, 'K': 3}
+
+        # Pair with public card wins
+        if p0 == self.public_card and p1 != self.public_card:
             return 1
-        elif card_rank[p0_card] < card_rank[p1_card]:
+        if p1 == self.public_card and p0 != self.public_card:
             return -1
-        else:
-            return 0
-        
-    def next_state(self,action):
-        new_history = self.history + action[0].upper()
-        new_pot = self.pot
-        new_cards = self.cards.copy()
+        if ranks[p0] > ranks[p1]:
+            return 1
+        if ranks[p1] > ranks[p0]:
+            return -1
+        return 0
 
-        if action == "bet":
-            new_pot += 1
-            next_player = 1 - self.current_player
-        elif action == "call":
-            new_pot += 1
-            next_player = 1 - self.current_player
-        elif action == "fold":
-            next_player = 1 - self.current_player
-        elif action == "check":
-            next_player = 1 - self.current_player        
-        else:
-            raise ValueError(f"Invalid action: {action}")
-        
-        next_state = leducPokerState(
-            history=new_history,
-            cards = new_cards,
+    def next_state(self, action):
+        a = action[0].upper()
+        h2 = self.history + a
+        pot2 = self.pot
+
+        # Betting adds to pot
+        if action == "bet" or action == "call":
+            pot2 += 1
+
+        # Player alternates
+        next_player = 1 - self.current_player
+
+        # ON FIRST CC → REVEAL PUBLIC CARD
+        if h2.endswith("CC") and self.public_card is None:
+            # Reveal a public card from remaining deck
+            pub = random.choice(self.remaining_deck)
+            return leducPokerState(
+                history=h2,
+                private_cards=self.private_cards,
+                public_card=pub,
+                current_player=next_player,
+                pot=pot2
+            )
+
+        # Otherwise continue game
+        return leducPokerState(
+            history=h2,
+            private_cards=self.private_cards,
+            public_card=self.public_card,
             current_player=next_player,
-            pot=new_pot
+            pot=pot2
         )
-
-        return next_state
-    
-
-# Running the game
-
-game = leducPokerState()
-print(f"initial State :\nHistory :{game.history}\nCards : {game.cards}\nCurrent Player :{game.current_player}\n Pot: {game.pot}")
-next_game = game.next_state('bet')
-print("\nAfter Player 0 makes a bet")
-print(f"Next State :\nHistory :{next_game.history}\nCards : {next_game.cards}\n Current Player : {next_game.current_player}\n Pot: {next_game.pot}")
-
-
-terminal_state = leducPokerState(history="BC", cards=['J','K'], current_player=0, pot =4)
-print(f"\nTerminal State:\nHistory :{terminal_state.history}\nCards : {terminal_state.cards}\n Current Player :{terminal_state.current_player}\n Pot: {terminal_state.pot}")
-
-
-for h in ["", "B", "BC", "BF", "C", "CB", "CBF", "CC"]:
-    s = leducPokerState(history=h)
-    print(f"{h:3} → {s.legal_actions()} | Terminal: {s.is_terminal()}")
-
-
 

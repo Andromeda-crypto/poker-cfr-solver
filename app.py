@@ -3,7 +3,7 @@
 import streamlit as st
 import numpy as np
 from cfr_solver import CFRSolver
-from kuhn_state import kuhnPokerState
+from kuhn_state import KuhnPokerState
 from leduc_state import leducPokerState
 from information_set import get_information_set, infoset_map
 
@@ -21,7 +21,7 @@ st.sidebar.write(f"Average {game_type} Game Value: {avg_game_value:.4f}")
 # Initialize state
 if 'state' not in st.session_state or st.session_state.get('active_game') != game_type:
     st.session_state.active_game = game_type
-    st.session_state.state = kuhnPokerState() if game_type == "Kuhn" else leducPokerState()
+    st.session_state.state = KuhnPokerState() if game_type == "Kuhn" else leducPokerState()
     st.session_state.history_log = []
 
 state = st.session_state.state
@@ -58,7 +58,7 @@ def render_game():
         st.success("You win!" if payoff > 0 else "Bot wins!")
 
         if st.button("Restart Game"):
-            st.session_state.state = kuhnPokerState() if game_type == "Kuhn" else leducPokerState()
+            st.session_state.state = KuhnPokerState() if game_type == "Kuhn" else leducPokerState()
             st.session_state.history_log = []
         return
 

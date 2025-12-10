@@ -1,7 +1,7 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from information_set import get_information_set, infoset_map
-from kuhn_state import kuhnPokerState
+from kuhn_state import KuhnPokerState
 from leduc_state import leducPokerState
 
 
@@ -10,7 +10,7 @@ class CFRSolver:
         self.game_type = game_type
         self.iterations = 0
         self.values = []
-        
+
         if game_type == "Kuhn":
             self.strategy_history = {c: [] for c in ['J', 'Q', 'K']}
         else:
@@ -18,7 +18,7 @@ class CFRSolver:
 
     def _new_game_state(self):
         if self.game_type == "Kuhn":
-            return kuhnPokerState()
+            return KuhnPokerState()
         else:
             return leducPokerState()
 
